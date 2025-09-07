@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Star, Grid2x2 as Grid } from 'lucide-react-native';
 import { PasswordEntry } from '@/types/password';
@@ -19,6 +20,14 @@ export default function PasswordsScreen() {
   useEffect(() => {
     loadPasswords();
   }, []);
+
+  // Refresh passwords when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadPasswords();
+      return () => {};
+    }, [])
+  );
 
   const loadPasswords = async () => {
     try {
@@ -83,6 +92,11 @@ export default function PasswordsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'right', 'left']}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Passwords</Text>
         <Text style={[styles.subtitle, { color: colors.textMuted }]}>
@@ -148,6 +162,7 @@ export default function PasswordsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

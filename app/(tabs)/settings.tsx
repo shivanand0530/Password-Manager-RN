@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Shield, Download, Upload, Trash2, Info, Lock, Smartphone, Moon, Sun, Monitor } from 'lucide-react-native';
 import { useTheme } from '@/app/context/ThemeContext';
 import { lightTheme, darkTheme } from '@/app/styles/theme';
+import { PasswordStorage } from '@/services/passwordStorage';
 
 export default function SettingsScreen() {
   const { theme, isDark, setTheme } = useTheme();
@@ -36,14 +37,29 @@ export default function SettingsScreen() {
       'This will permanently delete all your passwords. This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete All', style: 'destructive', onPress: () => console.log('Clear all data') },
+        { text: 'Delete All', style: 'destructive', onPress: handleClearAllDataConfirm },
       ]
     );
   };
 
+  const handleClearAllDataConfirm = async () => {
+    try {
+      await PasswordStorage.clearAllData();
+      Alert.alert('Success', 'All password data has been cleared.');
+    } catch (error) {
+      console.error('Failed to clear data:', error);
+      Alert.alert('Error', 'Failed to clear password data. Please try again.');
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'right', 'left']}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
         </View>
@@ -211,6 +227,7 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

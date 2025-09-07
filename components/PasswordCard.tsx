@@ -109,8 +109,8 @@ export default function PasswordCard({ entry, onEdit, onDelete, onToggleFavorite
           <Text style={[styles.editButtonText, { color: colors.primary }]}>Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <Trash2 size={16} color={colors.error} />
-          <Text style={[styles.deleteButtonText, { color: colors.error }]}>Delete</Text>
+          <Trash2 size={16} color= 'red' />
+          <Text style={[styles.deleteButtonText, { color: 'red' }]}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -122,7 +122,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
+    borderWidth: 2,
+    borderColor : '#000',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
   },
   header: {
     flexDirection: 'row',
@@ -199,5 +204,6 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     fontSize: 14,
     fontWeight: '500',
+    color: 'red',
   },
 });

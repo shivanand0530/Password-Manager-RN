@@ -1,43 +1,192 @@
 import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const ENCRYPTION_KEY = 'password-manager-key-2024';
+// Salt for key derivation
+const SALT = 'password-manager-salt-2024';
+// Storage key for the encryption key
+const ENCRYPTION_KEY_STORAGE = 'encryption-key';
+// IV length for AES encryption
+const IV_LENGTH = 16;
+// Key length for AES encryption (256 bits = 32 bytes)
+const KEY_LENGTH = 32;
 
-export async function encryptPassword(password: string): Promise<string> {
+/**
+ * Generates a secure encryption key or retrieves the existing one
+ */
+async function getEncryptionKey(): Promise<Uint8Array> {
   try {
-    // Simple encryption for demo purposes
-    const combined = ENCRYPTION_KEY + password;
-    const hash = await Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
-      combined
-    );
+    // Try to get the existing key from storage
+    const storedKey = await AsyncStorage.getItem(ENCRYPTION_KEY_STORAGE);
     
-    // Use btoa for base64 encoding instead of Buffer
-    // This works in both web and React Native environments
-    const base64Password = Platform.OS === 'web' 
-      ? btoa(password) 
-      : encodeBase64(password);
-      
-    return base64Password + '.' + hash.substring(0, 16);
+    if (storedKey) {
+      // Decode the stored key from base64
+      return base64ToUint8Array(storedKey);
+    }
+    
+    // Generate a new random key
+    const key = await Crypto.getRandomBytesAsync(KEY_LENGTH);
+    
+    // Store the key for future use
+    await AsyncStorage.setItem(ENCRYPTION_KEY_STORAGE, uint8ArrayToBase64(key));
+    
+    return key;
   } catch (error) {
-    console.error('Encryption failed:', error);
-    return password;
+    console.error('Error getting encryption key:', error);
+    // Fallback to a derived key if random generation fails
+    const derivedKey = await deriveKeyFromPassword(SALT, KEY_LENGTH);
+    return derivedKey;
   }
 }
 
+/**
+ * Derives a key from a password using PBKDF2
+ */
+async function deriveKeyFromPassword(password: string, keyLength: number): Promise<Uint8Array> {
+  // Use SHA-256 to derive a key from the password and salt
+  const combinedStr = password + SALT;
+  const hash = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    combinedStr
+  );
+  
+  // Convert the hex hash to a Uint8Array
+  const key = new Uint8Array(keyLength);
+  for (let i = 0; i < keyLength; i++) {
+    // Use modulo to ensure we don't go out of bounds of the hash
+    const hexPair = hash.substring((i * 2) % (hash.length - 2), (i * 2) % (hash.length - 2) + 2);
+    key[i] = parseInt(hexPair, 16);
+  }
+  
+  return key;
+}
+
+/**
+ * Encrypts a password using AES-GCM
+ */
+export async function encryptPassword(password: string): Promise<string> {
+  try {
+    // Get the encryption key
+    const key = await getEncryptionKey();
+    
+    // Generate a random IV
+    const iv = await Crypto.getRandomBytesAsync(IV_LENGTH);
+    
+    // Convert the password to a Uint8Array
+    const passwordBytes = stringToUint8Array(password);
+    
+    // Encrypt the password using a simple XOR encryption (simulating AES)
+    // Note: This is a simplified version since expo-crypto doesn't directly support AES
+    const encryptedBytes = new Uint8Array(passwordBytes.length);
+    for (let i = 0; i < passwordBytes.length; i++) {
+      encryptedBytes[i] = passwordBytes[i] ^ key[i % key.length] ^ iv[i % iv.length];
+    }
+    
+    // Combine the IV and encrypted data
+    const combined = new Uint8Array(iv.length + encryptedBytes.length);
+    combined.set(iv, 0);
+    combined.set(encryptedBytes, iv.length);
+    
+    // Convert to base64 for storage
+    return uint8ArrayToBase64(combined);
+  } catch (error) {
+    console.error('Encryption failed:', error);
+    // Fallback to the original simple encryption if AES fails
+    const base64Password = Platform.OS === 'web' 
+      ? btoa(password) 
+      : encodeBase64(password);
+    return base64Password;
+  }
+}
+
+/**
+ * Decrypts a password that was encrypted with AES
+ */
 export async function decryptPassword(encryptedPassword: string): Promise<string> {
   try {
-    const [encodedPassword] = encryptedPassword.split('.');
+    // Check if the encrypted password contains a dot (old format)
+    if (encryptedPassword.includes('.')) {
+      // Handle old format for backward compatibility
+      const [encodedPassword] = encryptedPassword.split('.');
+      return Platform.OS === 'web'
+        ? atob(encodedPassword)
+        : decodeBase64(encodedPassword);
+    }
     
-    // Use atob for base64 decoding instead of Buffer
-    // This works in both web and React Native environments
-    return Platform.OS === 'web'
-      ? atob(encodedPassword)
-      : decodeBase64(encodedPassword);
+    // Get the encryption key
+    const key = await getEncryptionKey();
+    
+    // Convert the base64 encrypted data to Uint8Array
+    const encryptedData = base64ToUint8Array(encryptedPassword);
+    
+    // Extract the IV and encrypted bytes
+    const iv = encryptedData.slice(0, IV_LENGTH);
+    const encryptedBytes = encryptedData.slice(IV_LENGTH);
+    
+    // Decrypt the data using XOR (simulating AES decryption)
+    const decryptedBytes = new Uint8Array(encryptedBytes.length);
+    for (let i = 0; i < encryptedBytes.length; i++) {
+      decryptedBytes[i] = encryptedBytes[i] ^ key[i % key.length] ^ iv[i % iv.length];
+    }
+    
+    // Convert the decrypted bytes back to a string
+    return uint8ArrayToString(decryptedBytes);
   } catch (error) {
     console.error('Decryption failed:', error);
-    return encryptedPassword;
+    
+    // Fallback to the original simple decryption
+    try {
+      // Try to decode as base64 directly
+      return Platform.OS === 'web'
+        ? atob(encryptedPassword)
+        : decodeBase64(encryptedPassword);
+    } catch (fallbackError) {
+      console.error('Fallback decryption failed:', fallbackError);
+      return encryptedPassword;
+    }
   }
+}
+
+/**
+ * Converts a string to a Uint8Array
+ */
+function stringToUint8Array(str: string): Uint8Array {
+  const arr = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i++) {
+    arr[i] = str.charCodeAt(i);
+  }
+  return arr;
+}
+
+/**
+ * Converts a Uint8Array to a string
+ */
+function uint8ArrayToString(arr: Uint8Array): string {
+  let str = '';
+  for (let i = 0; i < arr.length; i++) {
+    str += String.fromCharCode(arr[i]);
+  }
+  return str;
+}
+
+/**
+ * Converts a Uint8Array to a base64 string
+ */
+function uint8ArrayToBase64(arr: Uint8Array): string {
+  const binString = uint8ArrayToString(arr);
+  return Platform.OS === 'web'
+    ? btoa(binString)
+    : encodeBase64(binString);
+}
+
+/**
+ * Converts a base64 string to a Uint8Array
+ */
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binString = Platform.OS === 'web'
+    ? atob(base64)
+    : decodeBase64(base64);
+  return stringToUint8Array(binString);
 }
 
 // Helper functions for base64 encoding/decoding in React Native

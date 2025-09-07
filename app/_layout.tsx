@@ -12,7 +12,7 @@ function Layout() {
   return (
     <SafeAreaProvider>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="+not-found" />
+        <Stack.Screen name="(tabs)" />
       </Stack>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </SafeAreaProvider>

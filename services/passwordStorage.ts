@@ -188,4 +188,23 @@ export class PasswordStorage {
     const filtered = passwords.filter(p => p.id !== id);
     await this.savePasswords(filtered);
   }
+
+  static async clearAllData(): Promise<void> {
+    try {
+      console.log('Clearing all password data...');
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      console.log('All password data cleared successfully');
+      
+      // Verify data was cleared
+      const verifyData = await AsyncStorage.getItem(STORAGE_KEY);
+      if (!verifyData) {
+        console.log('Verification SUCCESS - all data cleared');
+      } else {
+        console.error('Verification FAILED - data still exists after clear operation');
+      }
+    } catch (error) {
+      console.error('Failed to clear password data:', error);
+      throw error;
+    }
+  }
 }

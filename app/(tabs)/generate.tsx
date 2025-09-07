@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RefreshCw, Copy, Eye, EyeOff, FileSliders as Sliders, Save } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -90,7 +90,12 @@ export default function GeneratePasswordScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'right', 'left']}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>Password Generator</Text>
           <TouchableOpacity style={styles.settingsButton}>
@@ -324,7 +329,7 @@ export default function GeneratePasswordScreen() {
         ) : (
           <View style={styles.buttonRow}>
             <TouchableOpacity style={[styles.generateButton, { backgroundColor: colors.primary }]} onPress={generateNewPassword}>
-              <RefreshCw size={20} color="#ffffff" />
+              {/* <RefreshCw size={20} color="#ffffff" style={{  }} /> */}
               <Text style={[styles.generateButtonText, { color: '#ffffff' }]}>Generate New Password</Text>
             </TouchableOpacity>
             
@@ -338,6 +343,7 @@ export default function GeneratePasswordScreen() {
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -525,9 +531,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   generateButtonText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
     color: '#ffffff',
+    textAlign: 'center',
   },
   saveForm: {
     backgroundColor: '#1f2937',
@@ -554,7 +561,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
     color: '#ffffff',
   },
