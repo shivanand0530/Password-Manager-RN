@@ -3,9 +3,12 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "private": true,
+  "homepage": "https://shivanand0530.github.io/Password-Manager-RN",
   "scripts": {
     "dev": "expo start",
     "build:web": "expo export --platform web",
+    "predeploy": "npm run build:web",
+    "deploy": "gh-pages -d dist",
     "lint": "expo lint"
   },
   "dependencies": {
@@ -48,6 +51,7 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/react": "~19.0.10",
+    "gh-pages": "^6.1.1",
     "typescript": "~5.8.3"
   }
 }
