@@ -1,106 +1,119 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PasswordEntry } from '@/types/password';
 import { encryptPassword, decryptPassword } from '@/utils/encryption';
+import { 
+  initDatabase,
+  savePassword,
+  getAllPasswords,
+  updatePassword as updatePasswordInDb,
+  deletePassword as deletePasswordFromDb,
+  getPasswordById,
+  exportDatabaseFile,
+} from './database';
+
+const OLD_STORAGE_KEY = 'password_entries';
 
 // For debugging
 const DEBUG = true;
 
-const STORAGE_KEY = 'password_entries';
-
 export class PasswordStorage {
-  static async savePasswords(passwords: PasswordEntry[]): Promise<void> {
+  static async initialize(): Promise<void> {
     try {
-      console.log('Saving passwords, count:', passwords.length);
-      if (passwords.length > 0) {
-        console.log('First password ID being saved:', passwords[0].id);
-      }
+      console.log('Initializing SQLite database...');
+      await initDatabase();
+      console.log('SQLite database initialized successfully');
       
-      const encryptedPasswords = await Promise.all(
-        passwords.map(async (entry, index) => {
-          try {
-            const encrypted = {
-              ...entry,
-              password: await encryptPassword(entry.password),
-            };
-            console.log(`Successfully encrypted password ${index + 1}/${passwords.length} with ID: ${entry.id}`);
-            return encrypted;
-          } catch (err) {
-            console.error(`Error encrypting password ${index + 1} with ID ${entry.id}:`, err);
-            // Return with original password if encryption fails
-            return entry;
-          }
-        })
-      );
-      
-      const jsonData = JSON.stringify(encryptedPasswords);
-      console.log('JSON data length:', jsonData.length);
-      console.log('JSON data first 100 chars:', jsonData.substring(0, 100));
-      
-      await AsyncStorage.setItem(STORAGE_KEY, jsonData);
-      console.log('Passwords saved to AsyncStorage');
-      
-      // Verify data was saved correctly
-      const verifyData = await AsyncStorage.getItem(STORAGE_KEY);
-      console.log('Verification - data exists:', !!verifyData);
-      if (verifyData) {
-        console.log('Verification - data length:', verifyData.length);
-        
-        try {
-          const verifyParsed = JSON.parse(verifyData);
-          console.log('Verification - parsed data count:', verifyParsed.length);
-          if (verifyParsed.length !== passwords.length) {
-            console.error('Verification FAILED - count mismatch:', verifyParsed.length, 'vs', passwords.length);
-          } else {
-            console.log('Verification SUCCESS - count matches');
-          }
-        } catch (parseErr) {
-          console.error('Verification FAILED - could not parse stored data:', parseErr);
-        }
-      } else {
-        console.error('Verification FAILED - no data found after save');
-      }
+      // Check if we need to migrate data from AsyncStorage
+      await this.migrateFromAsyncStorage();
     } catch (error) {
-      console.error('Failed to save passwords:', error);
+      console.error('Failed to initialize database:', error);
       throw error;
+    }
+  }
+
+  private static async migrateFromAsyncStorage(): Promise<void> {
+    try {
+      console.log('Checking for data in AsyncStorage...');
+      const stored = await AsyncStorage.getItem(OLD_STORAGE_KEY);
+      
+      if (!stored) {
+        console.log('No data found in AsyncStorage to migrate');
+        return;
+      }
+      
+      console.log('Found data in AsyncStorage, beginning migration...');
+      
+      let passwords: PasswordEntry[];
+      try {
+        const parsed = JSON.parse(stored);
+        if (!Array.isArray(parsed)) {
+          throw new Error('Stored data is not an array');
+        }
+        
+        // Validate and convert dates
+        passwords = parsed.map(entry => ({
+          ...entry,
+          createdAt: new Date(entry.createdAt),
+          updatedAt: new Date(entry.updatedAt),
+        }));
+        
+      } catch (parseError) {
+        console.error('Error parsing AsyncStorage data:', parseError);
+        throw new Error('Failed to parse AsyncStorage data during migration');
+      }
+      
+      console.log(`Found ${passwords.length} passwords to migrate`);
+      
+      // Save each password to SQLite
+      for (const password of passwords) {
+        try {
+          await savePassword(password);
+          console.log(`Migrated password with ID: ${password.id}`);
+        } catch (saveError) {
+          console.error(`Error migrating password ${password.id}:`, saveError);
+          // Continue with other passwords even if one fails
+        }
+      }
+      
+      // Verify migration
+      const migratedPasswords = await getAllPasswords();
+      console.log(`Migration complete. Verified ${migratedPasswords.length} passwords in SQLite`);
+      
+      // Clear AsyncStorage data only if migration was successful
+      if (migratedPasswords.length >= passwords.length) {
+        await AsyncStorage.removeItem(OLD_STORAGE_KEY);
+        console.log('Successfully cleared old AsyncStorage data');
+      } else {
+        console.warn('Migration may be incomplete. Keeping AsyncStorage data as backup');
+      }
+      
+    } catch (error) {
+      console.error('Migration failed:', error);
+      throw new Error('Failed to migrate data from AsyncStorage to SQLite');
+    }
+  }
+
+  private static initialized = false;
+
+  private static async ensureInitialized() {
+    if (!this.initialized) {
+      await this.initialize();
+      this.initialized = true;
     }
   }
 
   static async loadPasswords(): Promise<PasswordEntry[]> {
     try {
-      console.log('Loading passwords from storage...');
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      
-      if (!stored) {
-        console.log('No passwords found in storage');
-        return [];
-      }
-      
-      console.log('Raw stored data length:', stored.length);
-      console.log('Raw stored data first 100 chars:', stored.substring(0, 100));
-      
-      let encryptedPasswords;
-      try {
-        encryptedPasswords = JSON.parse(stored);
-        console.log('Parsed passwords count:', encryptedPasswords.length);
-        if (encryptedPasswords.length > 0) {
-          console.log('First password entry (encrypted):', {
-            ...encryptedPasswords[0],
-            password: '***HIDDEN***'
-          });
-        }
-      } catch (parseError) {
-        console.error('Error parsing stored passwords JSON:', parseError);
-        return [];
-      }
+      await this.ensureInitialized();
+      console.log('Loading passwords from SQLite...');
+      const encryptedPasswords = await getAllPasswords();
       
       const passwords = await Promise.all(
-        encryptedPasswords.map(async (entry: any, index: number) => {
+        encryptedPasswords.map(async (entry, index) => {
           try {
             const decrypted = {
               ...entry,
               password: await decryptPassword(entry.password),
-              createdAt: new Date(entry.createdAt),
-              updatedAt: new Date(entry.updatedAt),
             };
             console.log(`Successfully decrypted password ${index + 1}/${encryptedPasswords.length}`);
             return decrypted;
@@ -108,11 +121,7 @@ export class PasswordStorage {
             console.error(`Error processing password entry ${index + 1}:`, err);
             console.log('Problematic entry:', { ...entry, password: '***HIDDEN***' });
             // Return the entry with original password if decryption fails
-            return {
-              ...entry,
-              createdAt: new Date(entry.createdAt),
-              updatedAt: new Date(entry.updatedAt),
-            };
+            return entry;
           }
         })
       );
@@ -127,42 +136,40 @@ export class PasswordStorage {
       return passwords;
     } catch (error) {
       console.error('Failed to load passwords:', error);
-      return [];
+      throw error;
     }
   }
 
   static async addPassword(entry: Omit<PasswordEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> {
-    console.log('Adding new password:', { ...entry, password: '***HIDDEN***' });
-    
-    const passwords = await this.loadPasswords();
-    console.log('Current passwords count before adding:', passwords.length);
-    
-    const newEntry: PasswordEntry = {
-      ...entry,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    
-    console.log('New entry created with ID:', newEntry.id);
-    
-    passwords.push(newEntry);
-    console.log('New passwords array length after push:', passwords.length);
-    
     try {
-      await this.savePasswords(passwords);
-      console.log('Password saved successfully to AsyncStorage');
+      await this.ensureInitialized();
+      console.log('Adding new password:', { ...entry, password: '***HIDDEN***' });
+      
+      const newEntry: PasswordEntry = {
+        ...entry,
+        id: Date.now().toString(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Encrypt the password before saving
+      const encryptedEntry = {
+        ...newEntry,
+        password: await encryptPassword(newEntry.password),
+      };
+      
+      console.log('New entry created with ID:', newEntry.id);
+      
+      await savePassword(encryptedEntry);
+      console.log('Password saved successfully to SQLite');
       
       // Verify the password was saved
-      const verifyPasswords = await this.loadPasswords();
-      console.log('Verified passwords count after save:', verifyPasswords.length);
-      
-      // Check if our new password is in the loaded passwords
-      const savedEntry = verifyPasswords.find(p => p.id === newEntry.id);
+      const savedEntry = await getPasswordById(newEntry.id);
       if (savedEntry) {
         console.log('Successfully verified new password was saved with ID:', newEntry.id);
       } else {
         console.error('New password was not found in verification load! ID:', newEntry.id);
+        throw new Error('Failed to verify password was saved');
       }
     } catch (error) {
       console.error('Error saving new password:', error);
@@ -171,39 +178,71 @@ export class PasswordStorage {
   }
 
   static async updatePassword(id: string, updates: Partial<PasswordEntry>): Promise<void> {
-    const passwords = await this.loadPasswords();
-    const index = passwords.findIndex(p => p.id === id);
-    if (index !== -1) {
-      passwords[index] = {
-        ...passwords[index],
-        ...updates,
+    try {
+      await this.ensureInitialized();
+      console.log('Updating password:', id);
+      
+      // Get the existing password entry
+      const existingEntry = await getPasswordById(id);
+      if (!existingEntry) {
+        throw new Error(`Password with ID ${id} not found`);
+      }
+
+      // If the password field is being updated, encrypt it
+      let encryptedUpdates = { ...updates };
+      if (updates.password) {
+        encryptedUpdates.password = await encryptPassword(updates.password);
+      }
+
+      // Merge updates with existing entry
+      const updatedEntry: PasswordEntry = {
+        ...existingEntry,
+        ...encryptedUpdates,
         updatedAt: new Date(),
       };
-      await this.savePasswords(passwords);
+
+      await updatePasswordInDb(updatedEntry);
+      console.log('Password updated successfully');
+    } catch (error) {
+      console.error('Failed to update password:', error);
+      throw error;
     }
   }
 
   static async deletePassword(id: string): Promise<void> {
-    const passwords = await this.loadPasswords();
-    const filtered = passwords.filter(p => p.id !== id);
-    await this.savePasswords(filtered);
+    try {
+      await this.ensureInitialized();
+      console.log('Deleting password:', id);
+      await deletePasswordFromDb(id);
+      console.log('Password deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete password:', error);
+      throw error;
+    }
   }
 
   static async clearAllData(): Promise<void> {
     try {
+      await this.ensureInitialized();
       console.log('Clearing all password data...');
-      await AsyncStorage.removeItem(STORAGE_KEY);
+      // Re-initialize the database to clear all data
+      await initDatabase();
       console.log('All password data cleared successfully');
-      
-      // Verify data was cleared
-      const verifyData = await AsyncStorage.getItem(STORAGE_KEY);
-      if (!verifyData) {
-        console.log('Verification SUCCESS - all data cleared');
-      } else {
-        console.error('Verification FAILED - data still exists after clear operation');
-      }
     } catch (error) {
       console.error('Failed to clear password data:', error);
+      throw error;
+    }
+  }
+
+  static async exportDatabase(): Promise<string> {
+    try {
+      await this.ensureInitialized();
+      console.log('Exporting database file...');
+      const exportPath = await exportDatabaseFile();
+      console.log('Database exported successfully to:', exportPath);
+      return exportPath;
+    } catch (error) {
+      console.error('Failed to export database:', error);
       throw error;
     }
   }

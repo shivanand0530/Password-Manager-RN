@@ -7,6 +7,9 @@ export default ({ config: _config }) => {
       ..._config.extra,
       EXPO_ROUTER_APP_ROOT: './app',
     },
+    "plugins":[
+      "expo-sqlite"
+    ]
   };
 
   return appConfig;

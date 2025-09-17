@@ -5,6 +5,8 @@ import { Shield, Download, Upload, Trash2, Info, Lock, Smartphone, Moon, Sun, Mo
 import { useTheme } from '@/app/context/ThemeContext';
 import { lightTheme, darkTheme } from '@/app/styles/theme';
 import { PasswordStorage } from '@/services/passwordStorage';
+import * as Sharing from 'expo-sharing';
+import { exportDatabaseFile } from '@/services/database';
 
 export default function SettingsScreen() {
   const { theme, isDark, setTheme } = useTheme();
@@ -42,6 +44,21 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleExportDB = async () => {
+    try {
+      const exportPath = await exportDatabaseFile();
+      await Sharing.shareAsync(exportPath, {
+        mimeType: 'application/x-sqlite3',
+        dialogTitle: 'Export Password Database',
+        UTI: 'public.database'
+      });
+      Alert.alert('Success', 'Database exported successfully');
+    } catch (error) {
+      console.error('Error exporting database:', error);
+      Alert.alert('Error', 'Failed to export database');
+    }
+  };
+
   const handleClearAllDataConfirm = async () => {
     try {
       await PasswordStorage.clearAllData();
@@ -65,9 +82,9 @@ export default function SettingsScreen() {
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Security</Text>
+           <Text style={[styles.sectionTitle, { color: colors.text }]}>Security</Text>
           
-          <TouchableOpacity style={styles.settingItem}>
+           { /*<TouchableOpacity style={styles.settingItem}>
             <View style={[styles.settingIcon, { backgroundColor: colors.iconBackground }]}>
               <Lock size={20} color={colors.primary} />
             </View>
@@ -91,9 +108,19 @@ export default function SettingsScreen() {
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor={colors.text}
             />
+          </TouchableOpacity> */}
+
+          <TouchableOpacity style={styles.settingItem} onPress={handleExportDB}>
+            <View style={[styles.settingIcon, { backgroundColor: colors.iconBackground }]}>
+              <Download size={20} color={colors.primary} />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>Export Database</Text>
+              <Text style={[styles.settingDescription, { color: colors.textMuted }]}>Download a backup of your database</Text>
+            </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingItem}>
+          {/* <TouchableOpacity style={styles.settingItem}>
             <View style={[styles.settingIcon, { backgroundColor: colors.iconBackground }]}>
               <Shield size={20} color={colors.primary} />
             </View>
@@ -107,32 +134,9 @@ export default function SettingsScreen() {
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor={colors.text}
             />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Data Management</Text>
-          
-          <TouchableOpacity style={styles.settingItem} onPress={handleExportData}>
-            <View style={[styles.settingIcon, { backgroundColor: colors.iconBackground }]}>
-              <Download size={20} color={colors.success} />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingTitle, { color: colors.text }]}>Export Data</Text>
-              <Text style={[styles.settingDescription, { color: colors.textMuted }]}>Export your passwords to a secure file</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.settingItem} onPress={handleImportData}>
-            <View style={[styles.settingIcon, { backgroundColor: colors.iconBackground }]}>
-              <Upload size={20} color={colors.success} />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingTitle, { color: colors.text }]}>Import Data</Text>
-              <Text style={[styles.settingDescription, { color: colors.textMuted }]}>Import passwords from a file</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
 
         <View style={[styles.section, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Appearance</Text>
