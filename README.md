@@ -1,3 +1,6 @@
+#Demo
+https://github.com/shivanand0530/Password-Manager-RN/blob/1fccf722f4c8756249877afd9879196458a5596d/demo.mp4
+
 # 🔐 Password-Manager-RN
 
 A secure and lightweight React Native app to store and manage your passwords locally. Built with React Native (Expo), this app keeps your credentials encrypted and safe — without using any cloud service.
