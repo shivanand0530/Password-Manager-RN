@@ -1,4 +1,4 @@
-#Demo
+## Demo
 
 
 # 🔐 Password-Manager-RN
@@ -12,22 +12,19 @@ A secure and lightweight React Native app to store and manage your passwords loc
 - 🔑 Add, edit, and delete password entries (website/app, username, password)
 - 🔐 AES encryption for local storage (vault is encrypted end-to-end)
 - 🔓 Master password authentication
-- 👆 Optional biometric login (Touch ID / Face ID)
 - 🌙 Dark and light theme support
 - 📋 One-tap copy to clipboard
-- ⏱️ Auto logout after inactivity
-- 📁 Encrypted backup and restore (JSON/QR code)
+- 📁 Encrypted backup , download a copy of stored passwords.
 
 ---
 
 ## 📦 Tech Stack
 
 - React Native + Expo
-- Secure local storage (AsyncStorage/MMKV/encrypted SQLite)
-- AES-256 encryption + PBKDF2 for key derivation
-- React Navigation
-- TypeScript (if used)
-- Biometric API support
+- Secure local storage (encrypted SQLite)
+- AES-256 encryption 
+- Expo router
+- TypeScript 
 
 ---
 
