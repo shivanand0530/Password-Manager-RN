@@ -1,6 +1,5 @@
 ## Screenshot of the App
-![Image](https://github.com/user-attachments/assets/d674987c-9bca-46a5-82a4-7601e5a94738) ![Image](https://github.com/user-attachments/assets/17cb9f89-1de5-42dd-8bfb-1356d5257fec) ![Image](https://github.com/user-attachments/assets/f822f3b3-6d0e-4fe7-9a1d-d366ca306909) ![Image](https://github.com/user-attachments/assets/c3582d53-0e7b-4570-a079-b1955416ae9b)
-
+<img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss1.jpg" width="200" height="400" />
 
 # 🔐 Password-Manager-RN
 
