@@ -8,15 +8,19 @@ const DB_NAME = 'passwords.db';
 
 // Get the database directory
 const getDatabaseDirectory = async (): Promise<string> => {
-  // In development, use a fixed location in the project directory
+  // Use documentDirectory for persistent storage across app sessions
   const directory = FileSystem.documentDirectory + 'SQLite/';
   
   // Ensure the directory exists
   try {
-    await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
-    console.log('Created directory:', directory);
+    const dirInfo = await FileSystem.getInfoAsync(directory);
+    if (!dirInfo.exists) {
+      await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+      console.log('Created SQLite directory:', directory);
+    }
   } catch (error) {
     console.error('Error creating directory:', error);
+    throw error;
   }
   
   return directory;
@@ -65,8 +69,9 @@ export const getDatabaseInfo = async (): Promise<{ name: string; directory: stri
 // Export database file
 const exportDatabaseFile = async (): Promise<string> => {
   try {
-    // Close the database connection to ensure all changes are written
-    await db.closeAsync();
+    // Ensure database is initialized and close the connection to ensure all changes are written
+    const database = await ensureDbInitialized();
+    await database.closeAsync();
     
     // Get current database path
     const dbPath = await getDatabasePath();
@@ -93,8 +98,9 @@ const exportDatabaseFile = async (): Promise<string> => {
       console.log('Database exported successfully');
 
     } finally {
-      // Always reopen the database
-      db = SQLite.openDatabaseSync(DB_NAME);
+      // Always reopen the database with full path
+      const dbPath = await getDatabasePath();
+      db = SQLite.openDatabaseSync(dbPath);
       createTables(db);
     }
     
@@ -130,58 +136,88 @@ const createTables = (database: SQLite.SQLiteDatabase) => {
 };
 
 // Open/create the database
-let db: SQLite.SQLiteDatabase;
-const initializeDb = async () => {
-  try {
-    // Ensure directory exists
-    const directory = await getDatabaseDirectory();
-    console.log('Database directory ready:', directory);
-    
-    // Create/open database
-    db = SQLite.openDatabaseSync(DB_NAME);
-    console.log('Database opened successfully');
-    
-    // Initialize schema
-    createTables(db);
-    
-    // Log database info
-    const info = await getDatabaseInfo();
-    console.log('Database fully initialized:', info);
-    
-    // Verify tables
-    const tables = db.execSync("SELECT name FROM sqlite_master WHERE type='table'");
-    console.log('Database tables:', tables);
-    
-  } catch (error) {
-    console.error('Error initializing database:', error);
-    throw error;
+let db: SQLite.SQLiteDatabase | null = null;
+let dbInitialized = false;
+let initializationPromise: Promise<void> | null = null;
+
+const initializeDb = async (): Promise<void> => {
+  if (dbInitialized && db) {
+    return; // Already initialized
   }
+  
+  if (initializationPromise) {
+    return initializationPromise; // Wait for existing initialization
+  }
+  
+  initializationPromise = (async () => {
+    try {
+      // Ensure directory exists
+      const directory = await getDatabaseDirectory();
+      console.log('Database directory ready:', directory);
+      
+      // Get full database path
+      const dbPath = await getDatabasePath();
+      console.log('Opening database at:', dbPath);
+      
+      // Create/open database with full path
+      db = SQLite.openDatabaseSync(dbPath);
+      console.log('Database opened successfully');
+      
+      // Initialize schema
+      createTables(db);
+      
+      // Log database info
+      const info = await getDatabaseInfo();
+      console.log('Database fully initialized:', info);
+      
+      // Verify tables
+      const tables = db.execSync("SELECT name FROM sqlite_master WHERE type='table'");
+      console.log('Database tables:', tables);
+      
+      dbInitialized = true;
+      
+    } catch (error) {
+      console.error('Error initializing database:', error);
+      db = null;
+      dbInitialized = false;
+      throw error;
+    }
+  })();
+  
+  return initializationPromise;
 };
 
-// Initialize the database
-initializeDb().catch(error => {
-  console.error('Failed to initialize database:', error);
-});
+// Ensure database is initialized before any operation
+const ensureDbInitialized = async (): Promise<SQLite.SQLiteDatabase> => {
+  if (!dbInitialized || !db) {
+    await initializeDb();
+  }
+  
+  if (!db) {
+    throw new Error('Database failed to initialize');
+  }
+  
+  return db;
+};
 
 // Initialize/reset the database if needed
-const initDatabase = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    try {
-      // Drop and recreate the table to reset it
-      db.execSync('DROP TABLE IF EXISTS passwords');
-      createTables(db);
-      resolve();
-    } catch (error: unknown) {
-      reject(error instanceof Error ? error : new Error(String(error)));
-    }
-  });
+const initDatabase = async (): Promise<void> => {
+  try {
+    const database = await ensureDbInitialized();
+    // Drop and recreate the table to reset it
+    database.execSync('DROP TABLE IF EXISTS passwords');
+    createTables(database);
+  } catch (error: unknown) {
+    throw error instanceof Error ? error : new Error(String(error));
+  }
 };
 
 // Save a new password
 const savePassword = async (password: PasswordEntry): Promise<void> => {
   const { id, title, username, password: pass, website, notes, category, isFavorite, createdAt, updatedAt } = password;
   try {
-    const stmt = db.prepareSync(
+    const database = await ensureDbInitialized();
+    const stmt = database.prepareSync(
       `INSERT INTO passwords (id, title, username, password, website, notes, category, isFavorite, createdAt, updatedAt)
        VALUES ($id, $title, $username, $password, $website, $notes, $category, $isFavorite, $createdAt, $updatedAt)`
     );
@@ -209,7 +245,8 @@ const savePassword = async (password: PasswordEntry): Promise<void> => {
 // Get all passwords
 const getAllPasswords = async (): Promise<PasswordEntry[]> => {
   try {
-    const stmt = db.prepareSync('SELECT * FROM passwords ORDER BY updatedAt DESC');
+    const database = await ensureDbInitialized();
+    const stmt = database.prepareSync('SELECT * FROM passwords ORDER BY updatedAt DESC');
     try {
       const result = stmt.executeSync<{
         id: string;
@@ -248,7 +285,8 @@ const getAllPasswords = async (): Promise<PasswordEntry[]> => {
 const updatePassword = async (password: PasswordEntry): Promise<void> => {
   const { id, title, username, password: pass, website, notes, category, isFavorite, updatedAt } = password;
   try {
-    const stmt = db.prepareSync(
+    const database = await ensureDbInitialized();
+    const stmt = database.prepareSync(
       `UPDATE passwords 
        SET title = $title, username = $username, password = $password, 
            website = $website, notes = $notes, category = $category, 
@@ -278,7 +316,8 @@ const updatePassword = async (password: PasswordEntry): Promise<void> => {
 // Delete a password
 const deletePassword = async (id: string): Promise<void> => {
   try {
-    const stmt = db.prepareSync('DELETE FROM passwords WHERE id = $id');
+    const database = await ensureDbInitialized();
+    const stmt = database.prepareSync('DELETE FROM passwords WHERE id = $id');
     try {
       stmt.executeSync({ $id: id });
     } finally {
@@ -292,7 +331,8 @@ const deletePassword = async (id: string): Promise<void> => {
 // Get a single password by ID
 const getPasswordById = async (id: string): Promise<PasswordEntry | null> => {
   try {
-    const stmt = db.prepareSync('SELECT * FROM passwords WHERE id = $id');
+    const database = await ensureDbInitialized();
+    const stmt = database.prepareSync('SELECT * FROM passwords WHERE id = $id');
     try {
       const result = stmt.executeSync<{
         id: string;
