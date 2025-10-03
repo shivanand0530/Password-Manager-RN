@@ -4,41 +4,37 @@ import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Keyboard
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Star, Grid2x2 as Grid } from 'lucide-react-native';
 import { PasswordEntry } from '@/types/password';
-import { PasswordStorage } from '@/services/passwordStorage';
-import PasswordCard from '@/components/PasswordCard';
-import { useTheme } from '@/app/context/ThemeContext';
-import { lightTheme, darkTheme } from '@/app/styles/theme';
+import SimplePasswordCard from '@/components/SimplePasswordCard';
+import PasswordBottomSheet from '@/components/PasswordBottomSheet';
+import { useTheme } from '@/context/ThemeContext';
+import { lightTheme, darkTheme } from '@/styles/theme';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { loadPasswords as loadPasswordsAsync, deletePassword, updatePassword, deserializePassword, selectAllPasswords, selectPasswordsLoading } from '@/store/Slices/passwordSlice';
+
 
 export default function PasswordsScreen() {
-  const [passwords, setPasswords] = useState<PasswordEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [selectedPassword, setSelectedPassword] = useState<PasswordEntry | null>(null);
+  const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkTheme : lightTheme;
 
+  const passwords = useAppSelector(selectAllPasswords);
+  const loading = useAppSelector(selectPasswordsLoading);
+  const dispatch = useAppDispatch();
+
   useEffect(() => {
-    loadPasswords();
-  }, []);
+    dispatch(loadPasswordsAsync());
+  }, [dispatch]);
 
   // Refresh passwords when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      loadPasswords();
+      dispatch(loadPasswordsAsync());
       return () => {};
-    }, [])
+    }, [dispatch])
   );
-
-  const loadPasswords = async () => {
-    try {
-      const stored = await PasswordStorage.loadPasswords();
-      setPasswords(stored);
-    } catch (error) {
-      console.error('Failed to load passwords:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleEdit = (entry: PasswordEntry) => {
     // Navigate to edit screen - for now just log
@@ -47,8 +43,7 @@ export default function PasswordsScreen() {
 
   const handleDelete = async (id: string) => {
     try {
-      await PasswordStorage.deletePassword(id);
-      setPasswords(prev => prev.filter(p => p.id !== id));
+      dispatch(deletePassword(id));
     } catch (error) {
       console.error('Failed to delete password:', error);
     }
@@ -58,14 +53,21 @@ export default function PasswordsScreen() {
     try {
       const password = passwords.find(p => p.id === id);
       if (password) {
-        await PasswordStorage.updatePassword(id, { isFavorite: !password.isFavorite });
-        setPasswords(prev =>
-          prev.map(p => p.id === id ? { ...p, isFavorite: !p.isFavorite } : p)
-        );
+        dispatch(updatePassword({ id, updates: { isFavorite: !password.isFavorite } }));
       }
     } catch (error) {
       console.error('Failed to toggle favorite:', error);
     }
+  };
+
+  const handlePasswordPress = (entry: PasswordEntry) => {
+    setSelectedPassword(entry);
+    setIsBottomSheetVisible(true);
+  };
+
+  const handleCloseBottomSheet = () => {
+    setIsBottomSheetVisible(false);
+    setSelectedPassword(null);
   };
 
   const filteredPasswords = passwords.filter(password => {
@@ -149,12 +151,9 @@ export default function PasswordsScreen() {
           data={filteredPasswords}
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
-            <PasswordCard
+            <SimplePasswordCard
               entry={item}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onToggleFavorite={handleToggleFavorite}
-              theme={theme}
+              onPress={handlePasswordPress}
               colors={colors}
             />
           )}
@@ -163,6 +162,16 @@ export default function PasswordsScreen() {
         />
       )}
       </KeyboardAvoidingView>
+      
+      <PasswordBottomSheet
+        isVisible={isBottomSheetVisible}
+        entry={selectedPassword}
+        onClose={handleCloseBottomSheet}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onToggleFavorite={handleToggleFavorite}
+        colors={colors}
+      />
     </SafeAreaView>
   );
 }
@@ -216,6 +225,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 100,
   },
   emptyContainer: {

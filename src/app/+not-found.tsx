@@ -1,8 +1,8 @@
 import { Link, Stack } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '@/app/context/ThemeContext';
-import { lightTheme, darkTheme } from '@/app/styles/theme';
+import { useTheme } from '@/context/ThemeContext';
+import { lightTheme, darkTheme } from '@/styles/theme';
 
 export default function NotFoundScreen() {
   const { theme } = useTheme();

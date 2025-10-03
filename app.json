@@ -2,16 +2,19 @@
   "expo": {
     "name": "GuardVault",
     "slug": "GuardVault",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./src/assets/images/appicon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "This app uses Face ID to securely authenticate and protect your passwords."
+      },
       "splash": {
-        "image": "./assets/images/icon.png",
+        "image": "./src/assets/images/appicon.png",
         "resizeMode": "contain",
         "backgroundColor": "#1f2937"
       }
@@ -19,12 +22,16 @@
     "android": {
       "package": "com.guardvault.app",
       "versionCode": 1,
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
+        "foregroundImage": "./src/assets/images/appicon.png",
         "backgroundColor": "#1f2937"
       },
       "splash": {
-        "image": "./assets/images/icon.png",
+        "image": "./src/assets/images/appicon.png",
         "resizeMode": "contain",
         "backgroundColor": "#1f2937"
       }
@@ -32,7 +39,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./src/assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",
@@ -43,7 +50,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "EXPO_ROUTER_APP_ROOT": "./app",
+      "EXPO_ROUTER_APP_ROOT": "app/index",
       "eas": {
         "projectId": "f3cca095-50b2-43d0-8486-85e4a73eb3dd"
       }

@@ -6,8 +6,8 @@ import * as Clipboard from 'expo-clipboard';
 import { generatePassword, calculatePasswordStrength } from '@/utils/encryption';
 import { GeneratorOptions } from '@/types/password';
 import { PasswordStorage } from '@/services/passwordStorage';
-import { useTheme } from '@/app/context/ThemeContext';
-import { lightTheme, darkTheme } from '@/app/styles/theme';
+import { useTheme } from '@/context/ThemeContext';
+import { lightTheme, darkTheme } from '@/styles/theme';
 
 export default function GeneratePasswordScreen() {
   const { theme } = useTheme();

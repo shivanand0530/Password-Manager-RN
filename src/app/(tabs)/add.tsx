@@ -1,35 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Save, Star, Eye, EyeOff } from 'lucide-react-native';
-import { PasswordStorage } from '@/services/passwordStorage';
 import { calculatePasswordStrength } from '@/utils/encryption';
-import { useTheme } from '@/app/context/ThemeContext';
-import { lightTheme, darkTheme } from '@/app/styles/theme';
-
-const categories = [
-  { id: 'social', name: 'Social Media', color: '#3b82f6' },
-  { id: 'work', name: 'Work', color: '#059669' },
-  { id: 'banking', name: 'Banking', color: '#dc2626' },
-  { id: 'shopping', name: 'Shopping', color: '#f59e0b' },
-  { id: 'entertainment', name: 'Entertainment', color: '#8b5cf6' },
-  { id: 'other', name: 'Other', color: '#6b7280' },
-];
+import { useTheme } from '@/context/ThemeContext';
+import { lightTheme, darkTheme } from '@/styles/theme';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { savePassword, selectPasswordsLoading, selectPasswordsError, clearError } from '@/store/Slices/passwordSlice';
+import { selectAllCategories } from '@/store/Slices/categoriesSlice';
 
 export default function AddPasswordScreen() {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkTheme : lightTheme;
+  
+  // Redux hooks
+  const dispatch = useAppDispatch();
+  const categories = useAppSelector(selectAllCategories);
+  const isLoading = useAppSelector(selectPasswordsLoading);
+  const error = useAppSelector(selectPasswordsError);
+  
+  // Local form state
   const [title, setTitle] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [website, setWebsite] = useState('');
   const [notes, setNotes] = useState('');
-  const [category, setCategory] = useState('other');
+  const [category, setCategory] = useState('6'); // Default to "Other" category
   const [isFavorite, setIsFavorite] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   const passwordStrength = calculatePasswordStrength(password);
+
+  // Clear any existing errors when component mounts
+  useEffect(() => {
+    if (error) {
+      dispatch(clearError());
+    }
+  }, []);
 
   const handleSave = async () => {
     if (!title.trim() || !username.trim() || !password.trim()) {
@@ -37,9 +44,8 @@ export default function AddPasswordScreen() {
       return;
     }
 
-    setSaving(true);
     try {
-      await PasswordStorage.addPassword({
+      const passwordData = {
         title: title.trim(),
         username: username.trim(),
         password: password.trim(),
@@ -47,16 +53,17 @@ export default function AddPasswordScreen() {
         notes: notes.trim(),
         category,
         isFavorite,
-      });
+      };
+
+      await dispatch(savePassword(passwordData)).unwrap();
 
       Alert.alert('Success', 'Password saved successfully!', [
         { text: 'OK', onPress: clearForm }
       ]);
     } catch (error) {
       console.error('Failed to save password:', error);
-      Alert.alert('Error', 'Failed to save password. Please try again.');
-    } finally {
-      setSaving(false);
+      const errorMessage = typeof error === 'string' ? error : 'Failed to save password. Please try again.';
+      Alert.alert('Error', errorMessage);
     }
   };
 
@@ -92,6 +99,12 @@ export default function AddPasswordScreen() {
             />
           </TouchableOpacity>
         </View>
+
+        {error && (
+          <View style={[styles.errorContainer, { backgroundColor: theme === 'dark' ? '#FEF2F2' : '#FEF2F2' }]}>
+            <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
+          </View>
+        )}
 
         <View style={styles.form}>
           <View style={styles.field}>
@@ -224,15 +237,15 @@ export default function AddPasswordScreen() {
             style={[
               styles.saveButton, 
               { backgroundColor: colors.primary },
-              saving && [styles.saveButtonDisabled, { opacity: 0.6 }]
+              isLoading && [styles.saveButtonDisabled, { opacity: 0.6 }]
             ]}
             onPress={handleSave}
-            disabled={saving}
-            accessibilityLabel={saving ? "Saving password" : "Save password"}
+            disabled={isLoading}
+            accessibilityLabel={isLoading ? "Saving password" : "Save password"}
           >
             <Save size={20} color="#ffffff" />
             <Text style={[styles.saveButtonText, { color: '#ffffff' }]}>
-              {saving ? 'Saving...' : 'Save Password'}
+              {isLoading ? 'Saving...' : 'Save Password'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -378,5 +391,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  errorContainer: {
+    backgroundColor: '#FEF2F2',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

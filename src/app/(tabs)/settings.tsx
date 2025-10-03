@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Shield, Download, Upload, Trash2, Info, Lock, Smartphone, Moon, Sun, Monitor } from 'lucide-react-native';
-import { useTheme } from '@/app/context/ThemeContext';
-import { lightTheme, darkTheme } from '@/app/styles/theme';
+import { Shield, Download, Upload, Trash2, Info, Lock, Smartphone, Moon, Sun, Monitor, Fingerprint } from 'lucide-react-native';
+import { useTheme } from '@/context/ThemeContext';
+import { useBiometric } from '@/context/BiometricContext';
+import { lightTheme, darkTheme } from '@/styles/theme';
 import { PasswordStorage } from '@/services/passwordStorage';
 import * as Sharing from 'expo-sharing';
 import { exportDatabaseFile } from '@/services/database';
@@ -11,6 +12,17 @@ import { exportDatabaseFile } from '@/services/database';
 export default function SettingsScreen() {
   const { theme, isDark, setTheme } = useTheme();
   const colors = isDark ? darkTheme : lightTheme;
+  const { 
+    isBiometricEnabled, 
+    isBiometricSupported, 
+    enableBiometric, 
+    disableBiometric,
+    checkBiometricSupport 
+  } = useBiometric();
+
+  useEffect(() => {
+    checkBiometricSupport();
+  }, []);
   const handleExportData = () => {
     Alert.alert(
       'Export Data',
@@ -69,6 +81,21 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleBiometricToggle = async (enabled: boolean) => {
+    try {
+      if (enabled) {
+        await enableBiometric();
+        Alert.alert('Success', 'Biometric authentication enabled. Your app will now require biometric authentication to unlock.');
+      } else {
+        await disableBiometric();
+        Alert.alert('Success', 'Biometric authentication disabled.');
+      }
+    } catch (error) {
+      console.error('Error toggling biometric:', error);
+      Alert.alert('Error', 'Failed to update biometric settings. Please try again.');
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'right', 'left']}>
       <KeyboardAvoidingView 
@@ -84,57 +111,40 @@ export default function SettingsScreen() {
         <View style={[styles.section, { backgroundColor: colors.card }]}>
            <Text style={[styles.sectionTitle, { color: colors.text }]}>Security</Text>
           
-           { /*<TouchableOpacity style={styles.settingItem}>
+          {/* Biometric Authentication */}
+          <View style={styles.settingItem}>
             <View style={[styles.settingIcon, { backgroundColor: colors.iconBackground }]}>
-              <Lock size={20} color={colors.primary} />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingTitle, { color: colors.text }]}>Master Password</Text>
-              <Text style={[styles.settingDescription, { color: colors.textMuted }]}>Change your master password</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={[styles.settingIcon, { backgroundColor: colors.iconBackground }]}>
-              <Smartphone size={20} color={colors.primary} />
+              <Fingerprint size={20} color={colors.primary} />
             </View>
             <View style={styles.settingContent}>
               <Text style={[styles.settingTitle, { color: colors.text }]}>Biometric Authentication</Text>
-              <Text style={[styles.settingDescription, { color: colors.textMuted }]}>Use fingerprint or face recognition</Text>
+              <Text style={[styles.settingDescription, { color: colors.textMuted }]}>
+                {isBiometricSupported 
+                  ? 'Use fingerprint or face recognition to unlock' 
+                  : 'Not available on this device'
+                }
+              </Text>
             </View>
-            <Switch 
-              value={false} 
-              onValueChange={() => Alert.alert('Coming Soon', 'This feature will be available in a future update.')}
+            <Switch
+              value={isBiometricEnabled}
+              onValueChange={handleBiometricToggle}
+              disabled={!isBiometricSupported}
               trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={colors.text}
+              thumbColor={isBiometricEnabled ? colors.background : colors.textMuted}
             />
-          </TouchableOpacity> */}
+          </View>
 
           <TouchableOpacity style={styles.settingItem} onPress={handleExportDB}>
             <View style={[styles.settingIcon, { backgroundColor: colors.iconBackground }]}>
               <Download size={20} color={colors.primary} />
             </View>
             <View style={styles.settingContent}>
-              <Text style={[styles.settingTitle, { color: colors.text }]}>Export Database</Text>
-              <Text style={[styles.settingDescription, { color: colors.textMuted }]}>Download a backup of your database</Text>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>Export Passwords</Text>
+              <Text style={[styles.settingDescription, { color: colors.textMuted }]}>Download a backup of your passwords</Text>
             </View>
           </TouchableOpacity>
 
-          {/* <TouchableOpacity style={styles.settingItem}>
-            <View style={[styles.settingIcon, { backgroundColor: colors.iconBackground }]}>
-              <Shield size={20} color={colors.primary} />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingTitle, { color: colors.text }]}>Auto-lock</Text>
-              <Text style={[styles.settingDescription, { color: colors.textMuted }]}>Lock app after 5 minutes of inactivity</Text>
-            </View>
-            <Switch 
-              value={false} 
-              onValueChange={() => Alert.alert('Coming Soon', 'This feature will be available in a future update.')}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={colors.text}
-            />
-          </TouchableOpacity> */}
+        
         </View>
 
 

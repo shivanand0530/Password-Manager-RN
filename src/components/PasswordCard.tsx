@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Eye, EyeOff, Copy, CreditCard as Edit, Trash2, Star, Globe } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { PasswordEntry } from '@/types/password';
-import { lightTheme, darkTheme } from '@/app/styles/theme';
+import { lightTheme, darkTheme } from '@/styles/theme';
 
 interface PasswordCardProps {
   entry: PasswordEntry;

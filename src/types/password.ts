@@ -11,6 +11,20 @@ export interface PasswordEntry {
   updatedAt: Date;
 }
 
+// Serialized version for Redux store (dates as strings)
+export interface SerializedPasswordEntry {
+  id: string;
+  title: string;
+  username: string;
+  password: string;
+  website?: string;
+  notes?: string;
+  category: string;
+  isFavorite: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PasswordCategory {
   id: string;
   name: string;

@@ -33,3 +33,14 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# eas build
+build/
+*.apk
+*.aab
+*.ipa
+
+# sensitive files
+google-services.json
+GoogleService-Info.plist
+*.keystore
