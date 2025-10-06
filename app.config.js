@@ -8,7 +8,8 @@ export default ({ config: _config }) => {
       EXPO_ROUTER_APP_ROOT: './app',
     },
     "plugins":[
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-router",
     ]
   };
 

@@ -23,27 +23,6 @@ export default function SettingsScreen() {
   useEffect(() => {
     checkBiometricSupport();
   }, []);
-  const handleExportData = () => {
-    Alert.alert(
-      'Export Data',
-      'This feature will export your password data to a secure file. Make sure to store it safely.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Export', onPress: () => console.log('Export data') },
-      ]
-    );
-  };
-
-  const handleImportData = () => {
-    Alert.alert(
-      'Import Data',
-      'This feature will import password data from a file. This will replace your current data.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Import', onPress: () => console.log('Import data') },
-      ]
-    );
-  };
 
   const handleClearAllData = () => {
     Alert.alert(

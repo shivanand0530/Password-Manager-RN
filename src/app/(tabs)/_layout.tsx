@@ -36,7 +36,7 @@ export default function TabLayout() {
         options={{
           title: 'Passwords',
           tabBarIcon: ({ size, color }) => (
-            <Feather name='shield' size={28} color={color} />
+            <Feather name='shield' size={size} color={color} />
           ),
         }}
       />
@@ -45,7 +45,7 @@ export default function TabLayout() {
         options={{
           title: 'Add',
           tabBarIcon: ({ size, color }) => (
-            <Entypo name='plus' size={28} color={color} />
+            <Entypo name='plus' size={size} color={color} />
           ),
         }}
       />
@@ -54,7 +54,7 @@ export default function TabLayout() {
         options={{
           title: 'Generate',
           tabBarIcon: ({ size, color }) => (
-            <Feather name='key' size={28} color={color} />
+            <Feather name='key' size={size} color={color} />
           ),
         }}
       />
@@ -63,7 +63,7 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ size, color }) => (
-            <Ionicons name='settings-outline' size={28} color={color}  />
+            <Ionicons name='settings-outline' size={size} color={color}  />
           ),
         }}
       />

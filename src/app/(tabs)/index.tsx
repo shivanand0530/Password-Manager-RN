@@ -6,10 +6,12 @@ import { Search, Star, Grid2x2 as Grid } from 'lucide-react-native';
 import { PasswordEntry } from '@/types/password';
 import SimplePasswordCard from '@/components/SimplePasswordCard';
 import PasswordBottomSheet from '@/components/PasswordBottomSheet';
+import EditPasswordModal from '@/components/EditPasswordModal';
 import { useTheme } from '@/context/ThemeContext';
 import { lightTheme, darkTheme } from '@/styles/theme';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { loadPasswords as loadPasswordsAsync, deletePassword, updatePassword, deserializePassword, selectAllPasswords, selectPasswordsLoading } from '@/store/Slices/passwordSlice';
+import { selectAllCategories } from '@/store/Slices/categoriesSlice';
 
 
 export default function PasswordsScreen() {
@@ -17,11 +19,13 @@ export default function PasswordsScreen() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [selectedPassword, setSelectedPassword] = useState<PasswordEntry | null>(null);
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkTheme : lightTheme;
 
   const passwords = useAppSelector(selectAllPasswords);
   const loading = useAppSelector(selectPasswordsLoading);
+  const categories = useAppSelector(selectAllCategories);
   const dispatch = useAppDispatch();
 
   useEffect(() => {
@@ -31,14 +35,33 @@ export default function PasswordsScreen() {
   // Refresh passwords when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      dispatch(loadPasswordsAsync());
+      // Queue the dispatch to avoid scheduling updates during render
+      queueMicrotask(() => {
+        dispatch(loadPasswordsAsync());
+      });
       return () => {};
     }, [dispatch])
   );
 
   const handleEdit = (entry: PasswordEntry) => {
-    // Navigate to edit screen - for now just log
-    console.log('Edit password:', entry.title);
+    // Close bottom sheet and open edit modal
+    setIsBottomSheetVisible(false);
+    setTimeout(() => {
+      setSelectedPassword(entry);
+      setIsEditModalVisible(true);
+    }, 300);
+  };
+
+  const handleSaveEdit = async (id: string, updates: Partial<PasswordEntry>) => {
+    try {
+      await dispatch(updatePassword({ id, updates })).unwrap();
+      setIsEditModalVisible(false);
+      setSelectedPassword(null);
+      // Refresh the list
+      dispatch(loadPasswordsAsync());
+    } catch (error) {
+      console.error('Failed to update password:', error);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -170,6 +193,19 @@ export default function PasswordsScreen() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onToggleFavorite={handleToggleFavorite}
+        colors={colors}
+      />
+
+      <EditPasswordModal
+        key={selectedPassword?.id || 'new'}
+        isVisible={isEditModalVisible}
+        entry={selectedPassword}
+        onClose={() => {
+          setIsEditModalVisible(false);
+          setSelectedPassword(null);
+        }}
+        onSave={handleSaveEdit}
+        categories={categories}
         colors={colors}
       />
     </SafeAreaView>

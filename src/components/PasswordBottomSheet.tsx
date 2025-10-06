@@ -115,6 +115,8 @@ export default function PasswordBottomSheet({
     if (!entry) return;
     onEdit(entry);
     handleClose();
+    console.log("before error");
+    console.log("entry",entry);
   };
 
   if (!entry) return null;

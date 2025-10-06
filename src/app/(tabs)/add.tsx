@@ -6,18 +6,25 @@ import { calculatePasswordStrength } from '@/utils/encryption';
 import { useTheme } from '@/context/ThemeContext';
 import { lightTheme, darkTheme } from '@/styles/theme';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { savePassword, selectPasswordsLoading, selectPasswordsError, clearError } from '@/store/Slices/passwordSlice';
+import { savePassword, updatePassword, selectPasswordsLoading, selectPasswordsError, clearError } from '@/store/Slices/passwordSlice';
 import { selectAllCategories } from '@/store/Slices/categoriesSlice';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 export default function AddPasswordScreen() {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkTheme : lightTheme;
+  const params = useLocalSearchParams();
+  const router = useRouter();
   
   // Redux hooks
   const dispatch = useAppDispatch();
   const categories = useAppSelector(selectAllCategories);
   const isLoading = useAppSelector(selectPasswordsLoading);
   const error = useAppSelector(selectPasswordsError);
+  
+  // Check if we're in edit mode
+  const isEditMode = !!params.id;
+  const editingPasswordId = params.id as string | undefined;
   
   // Local form state
   const [title, setTitle] = useState('');
@@ -30,6 +37,18 @@ export default function AddPasswordScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   const passwordStrength = calculatePasswordStrength(password);
+
+  // Clear form function
+  const clearForm = () => {
+    setTitle('');
+    setUsername('');
+    setPassword('');
+    setWebsite('');
+    setNotes('');
+    setCategory('6');
+    setIsFavorite(false);
+    setShowPassword(false);
+  };
 
   // Clear any existing errors when component mounts
   useEffect(() => {
@@ -45,37 +64,54 @@ export default function AddPasswordScreen() {
     }
 
     try {
-      const passwordData = {
-        title: title.trim(),
-        username: username.trim(),
-        password: password.trim(),
-        website: website.trim(),
-        notes: notes.trim(),
-        category,
-        isFavorite,
-      };
+      if (isEditMode && editingPasswordId) {
+        // Update existing password
+        const updates = {
+          title: title.trim(),
+          username: username.trim(),
+          password: password.trim(),
+          website: website.trim(),
+          notes: notes.trim(),
+          category,
+          isFavorite,
+          updatedAt: new Date(),
+        };
 
-      await dispatch(savePassword(passwordData)).unwrap();
+        await dispatch(updatePassword({ id: editingPasswordId, updates })).unwrap();
 
-      Alert.alert('Success', 'Password saved successfully!', [
-        { text: 'OK', onPress: clearForm }
-      ]);
+        Alert.alert('Success', 'Password updated successfully!', [
+          { 
+            text: 'OK', 
+            onPress: () => {
+              router.back();
+              // Clear form after a short delay to ensure navigation completes
+              setTimeout(() => clearForm(), 100);
+            }
+          }
+        ]);
+      } else {
+        // Add new password
+        const passwordData = {
+          title: title.trim(),
+          username: username.trim(),
+          password: password.trim(),
+          website: website.trim(),
+          notes: notes.trim(),
+          category,
+          isFavorite,
+        };
+
+        await dispatch(savePassword(passwordData)).unwrap();
+
+        Alert.alert('Success', 'Password saved successfully!', [
+          { text: 'OK', onPress: clearForm }
+        ]);
+      }
     } catch (error) {
       console.error('Failed to save password:', error);
       const errorMessage = typeof error === 'string' ? error : 'Failed to save password. Please try again.';
       Alert.alert('Error', errorMessage);
     }
-  };
-
-  const clearForm = () => {
-    setTitle('');
-    setUsername('');
-    setPassword('');
-    setWebsite('');
-    setNotes('');
-    setCategory('other');
-    setIsFavorite(false);
-    setShowPassword(false);
   };
 
   return (
@@ -87,7 +123,9 @@ export default function AddPasswordScreen() {
       >
         <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>Add Password</Text>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {isEditMode ? 'Edit Password' : 'Add Password'}
+          </Text>
           <TouchableOpacity
             style={[styles.favoriteButton, isFavorite && styles.favoriteButtonActive]}
             onPress={() => setIsFavorite(!isFavorite)}
@@ -160,7 +198,9 @@ export default function AddPasswordScreen() {
             </View>
             {password.length > 0 && (
               <View style={styles.strengthContainer}>
-                <View style={[styles.strengthBar, { backgroundColor: passwordStrength.color }]} />
+                <View style={styles.strengthBarContainer}>
+                  <View style={[styles.strengthBar, { backgroundColor: passwordStrength.color, width: `${(passwordStrength.score / 5) * 100}%` }]} />
+                </View>
                 <Text style={[styles.strengthText, { color: passwordStrength.color }]}>
                   {passwordStrength.label}
                 </Text>
@@ -326,14 +366,21 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 8,
   },
-  strengthBar: {
-    width: 60,
+  strengthBarContainer: {
+    flex: 1,
     height: 4,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  strengthBar: {
+    height: '100%',
     borderRadius: 2,
   },
   strengthText: {
     fontSize: 12,
     fontWeight: '500',
+    minWidth: 70,
   },
   categoryScroll: {
     flexGrow: 0,

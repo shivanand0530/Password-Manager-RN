@@ -47,16 +47,14 @@ export const savePassword = createAsyncThunk(
     'passwords/savePassword',
     async (password: Omit<PasswordEntry, 'id' | 'createdAt' | 'updatedAt'>) => {
         const { PasswordStorage } = await import('../../services/passwordStorage');
-        await PasswordStorage.addPassword(password);
-        // Return the password with generated id and dates as strings for Redux
-        const now = new Date().toISOString();
-        const newEntry = {
-            ...password,
-            id: Date.now().toString(),
-            createdAt: now,
-            updatedAt: now,
+        // addPassword now returns the created entry with the correct ID
+        const newEntry = await PasswordStorage.addPassword(password);
+        // Serialize dates for Redux store
+        return {
+            ...newEntry,
+            createdAt: newEntry.createdAt.toISOString(),
+            updatedAt: newEntry.updatedAt.toISOString(),
         };
-        return newEntry;
     }
 );
 
