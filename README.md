@@ -1,25 +1,25 @@
 ## Screenshot of the App
 
-<img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss4.jpg" width="200" height="400" />   <img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss3.jpg" width="200" height="400" />   <img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss2.jpg" width="200" height="400" />  <img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss1.jpg" width="200" height="400" />
+   <img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss3.jpg" width="200" height="400" />   <img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss2.jpg" width="200" height="400" />  <img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss1.jpg" width="200" height="400" />
 
-# 🔐 Password-Manager-RN
+#  Password-Manager-RN
 
 A secure and lightweight React Native app to store and manage your passwords locally. Built with React Native (Expo), this app keeps your credentials encrypted and safe — without using any cloud service.
 
 ---
 
-## ✨ Features
+##  Features
 
-- 🔑 Add, edit, and delete password entries (website/app, username, password)
-- 🔐 AES encryption for local storage (vault is encrypted end-to-end)
-- 🔓 Master password authentication
-- 🌙 Dark and light theme support
-- 📋 One-tap copy to clipboard
-- 📁 Encrypted backup , download a copy of stored passwords.
+- Add, edit, and delete password entries (website/app, username, password)
+-  AES encryption for local storage (vault is encrypted end-to-end)
+-  Master password authentication
+-  Dark and light theme support
+-  One-tap copy to clipboard
+-  Encrypted backup , download a copy of stored passwords.
 
 ---
 
-## 📦 Tech Stack
+##  Tech Stack
 
 - React Native + Expo
 - Secure local storage (encrypted SQLite)
@@ -29,7 +29,7 @@ A secure and lightweight React Native app to store and manage your passwords loc
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 
