@@ -1,6 +1,5 @@
 ## Screenshots of the App
-
-<img src="https://github.com/shivanand0530/Password-Manager-RN/blob/5ce2620def763dcdf6a044d2d00ad4786fc83dc0/ss4.jpg" width="200" height="400" />  <img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss3.jpg" width="200" height="400" />   <img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss2.jpg" width="200" height="400" />  <img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss1.jpg" width="200" height="400" />
+<img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss5.jpg" width="200" height="300" /> <img src="https://github.com/shivanand0530/Password-Manager-RN/blob/5ce2620def763dcdf6a044d2d00ad4786fc83dc0/ss4.jpg" width="200" height="300" />  <img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss3.jpg" width="200" height="300" />   <img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss2.jpg" width="200" height="300" />  <img src="https://github.com/shivanand0530/Password-Manager-RN/blob/main/ss1.jpg" width="200" height="300" />
 
 #  Password-Manager-RN
 
